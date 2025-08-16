@@ -78,15 +78,15 @@ def draw_coordinates_boxes_on_image(image_path, coordinates, output_image_path, 
 
 parser = argparse.ArgumentParser(description="PC Agent")
 parser.add_argument('--instruction', type=str, default='default')
-parser.add_argument('--icon_caption', type=int, default=0) # 0: w/o icon_caption
-parser.add_argument('--location_info', type=str, default='center') # center or bbox or icon_centor; icon_center: only icon center
+parser.add_argument('--icon_caption', type=int, default=0)  # 0: w/o icon_caption
+parser.add_argument('--location_info', type=str, default='center')  # center or bbox or icon_centor; icon_center: only icon center
 parser.add_argument('--use_som', type=int, default=1) # for action
 parser.add_argument('--draw_text_box', type=int, default=0, help="whether to draw text boxes in som.")
 parser.add_argument('--font_path', type=str, default="/System/Library/Fonts/Times.ttc")
-parser.add_argument('--pc_type', type=str, default="mac") # windows or mac
+parser.add_argument('--pc_type', type=str, default="mac")  # windows or mac
 parser.add_argument('--api_url', type=str, default="https://api.openai.com/v1/chat/completions", help="GPT-4o api url.")
 parser.add_argument('--api_token', type=str, help="Your GPT-4o api token.")
-parser.add_argument('--qwen_api', type=str, default='', help="Input your Qwen-VL api if icon_caption=1.")
+parser.add_argument('--qwen_api', type=str, default='sk-1aa21ba323d044a092e3579753ec1548', help="Input your Qwen-VL api if icon_caption=1.")
 parser.add_argument('--add_info', type=str, default='')
 parser.add_argument('--disable_reflection', action='store_true')
 

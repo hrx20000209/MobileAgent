@@ -3,6 +3,9 @@ import time
 import copy
 import torch
 import shutil
+from openai import OpenAI
+import requests
+
 from PIL import Image, ImageDraw
 from time import sleep
 
@@ -35,8 +38,8 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 ADB_PATH = os.environ.get("ADB_PATH", default="adb")
 
 ## Reasoning model configs
-BACKBONE_TYPE = os.environ.get("BACKBONE_TYPE", default="OpenAI") # "OpenAI" or "Gemini" or "Claude"
-assert BACKBONE_TYPE in ["OpenAI", "Gemini", "Claude"], "Unknown BACKBONE_TYPE"
+BACKBONE_TYPE = os.environ.get("BACKBONE_TYPE", default="Qwen")  # "OpenAI" or "Gemini" or "Claude"
+assert BACKBONE_TYPE in ["OpenAI", "Gemini", "Claude", "DeepSeek", "Qwen"], "Unknown BACKBONE_TYPE"
 print("### Using BACKBONE_TYPE:", BACKBONE_TYPE)
 
 OPENAI_API_URL = "https://api.openai.com/v1/chat/completions"
@@ -48,6 +51,9 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", default=None)
 CLAUDE_API_URL = "https://api.anthropic.com/v1/messages"
 CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", default=None)
 
+DEEP_SEEK_API_URL = "https://api.deepseek.com/"
+DEEP_SEEK_API_KEY = "sk-9ca0af8886a243fb87a0df73657f1882"
+
 if BACKBONE_TYPE == "OpenAI":
     REASONING_MODEL = "gpt-4o-2024-11-20"
     KNOWLEDGE_REFLECTION_MODEL = "gpt-4o-2024-11-20"
@@ -57,6 +63,12 @@ elif BACKBONE_TYPE == "Gemini":
 elif BACKBONE_TYPE == "Claude":
     REASONING_MODEL = "claude-3-5-sonnet-20241022"
     KNOWLEDGE_REFLECTION_MODEL = "claude-3-5-sonnet-20241022"
+elif BACKBONE_TYPE == "DeepSeek":
+    REASONING_MODEL = "deepseek-reasoner"
+    KNOWLEDGE_REFLECTION_MODEL = "deepseek-reasoner"
+elif BACKBONE_TYPE == "Qwen":
+    REASONING_MODEL = "qwen-vl-max"
+    KNOWLEDGE_REFLECTION_MODEL = "qwen-vl-max"
 
 ## you can specify a jsonl file path for tracking API usage
 USAGE_TRACKING_JSONL = None # e.g., usage_tracking.jsonl
@@ -68,7 +80,7 @@ CAPTION_CALL_METHOD = "api"
 CAPTION_MODEL = "qwen-vl-plus"
 
 QWEN_API_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
-QWEN_API_KEY = os.environ.get("QWEN_API_KEY", default=None)
+QWEN_API_KEY = "sk-1aa21ba323d044a092e3579753ec1548"
 
 
 ## Initial Tips provided by user; You can add additional custom tips ###
@@ -385,6 +397,22 @@ def get_reasoning_model_api_response(chat, model_type=BACKBONE_TYPE, model=None,
         return inference_chat(chat, model, GEMINI_API_URL, GEMINI_API_KEY, usage_tracking_jsonl=USAGE_TRACKING_JSONL, temperature=temperature)
     elif model_type == "Claude":
         return inference_chat(chat, model, CLAUDE_API_URL, CLAUDE_API_KEY, usage_tracking_jsonl=USAGE_TRACKING_JSONL, temperature=temperature)
+    elif model_type == "Qwen":
+        return inference_chat(chat, model, QWEN_API_URL, QWEN_API_KEY, usage_tracking_jsonl=USAGE_TRACKING_JSONL, temperature=temperature)
+    elif model_type == "DeepSeek":
+        client = OpenAI(api_key=DEEP_SEEK_API_KEY, base_url="https://api.deepseek.com")
+        # 准备聊天消息
+        print(f"DeepSeek: {chat}")
+        chat = [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": chat}  # chat 变量的实际内容
+        ]
+        response = client.chat.completions.create(
+            model="deepseek-reasoner",  # 指定 DeepSeek 的聊天模型
+            messages=chat,  # 确保正确的消息格式
+            stream=False  # 不使用流式返回
+        )
+        return response.choices[0].message.content
     else:
         raise ValueError(f"Unknown model type: {model_type}")
     
@@ -658,7 +686,7 @@ def run_single_task(
             cur_output_recording_path = f"{screenrecord_dir}/step_{iter}.mp4"
             recording_process = start_recording(ADB_PATH)
 
-        if iter == 1: # first perception
+        if iter == 1:  # first perception
             screenshot_file = "./screenshot/screenshot.jpg"
             print("\n### Perceptor ... ###\n")
             perception_start_time = time.time()
@@ -966,7 +994,7 @@ def run_single_task(
             else:
                 raise ValueError("Invalid action name:", action_name)
 
-        elif "C" in outcome: # Failed. The last action produces no changes.
+        elif "C" in outcome:  # Failed. The last action produces no changes.
             action_outcome = "C"
         else:
             raise ValueError("Invalid outcome:", outcome)
