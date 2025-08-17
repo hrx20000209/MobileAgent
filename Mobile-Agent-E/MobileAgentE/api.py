@@ -48,11 +48,17 @@ def track_usage(res_json, api_key):
 def inference_chat(chat, model, api_url, token, usage_tracking_jsonl = None, max_tokens = 2048, temperature = 0.0):
     if token is None:
         raise ValueError("API key is required")
-    
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
-    }
+
+    if 'gpt' in model:
+        headers = {
+            "Content-Type": "application/json",
+            "api-key": token
+        }
+    else:
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}"
+        }
 
     data = {
         "model": model,
@@ -127,5 +133,5 @@ def inference_chat(chat, model, api_url, token, usage_tracking_jsonl = None, max
         if max_retry < 0:
             print(f"Failed after {max_retry} retries...")
             return None
-    
+
     return res_content
