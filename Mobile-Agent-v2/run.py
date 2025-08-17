@@ -28,19 +28,20 @@ adb_path = ""
 instruction = ""
 
 # Your GPT-4o API URL
-API_url = ""
+API_url = "https://hkust.azure-api.net/openai/deployments/gpt-4o/chat/completions?api-version=2024-10-21"
 
 # Your GPT-4o API Token
-token = ""
+token = "e9d5e438a26b4d4e880e4cd9fba554c7"
 
 # Choose between "api" and "local". api: use the qwen api. local: use the local qwen checkpoint
 caption_call_method = "api"
 
 # Choose between "qwen-vl-plus" and "qwen-vl-max" if use api method. Choose between "qwen-vl-chat" and "qwen-vl-chat-int4" if use local method.
-caption_model = "qwen-vl-plus"
+caption_model = "qwen-vl-max"
 
 # If you choose the api caption call method, input your Qwen api here
-qwen_api = ""
+qwen_api = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
+qwen_key = "sk-1aa21ba323d044a092e3579753ec1548"
 
 # You can add operational knowledge to help Agent operate more accurately.
 add_info = "If you want to tap an icon of an app, use the action \"Open app\". If you want to exit an app, use the action \"Home\""
@@ -103,7 +104,7 @@ def process_image(image, query):
             },
         ]
     }]
-    response = MultiModalConversation.call(model=caption_model, messages=messages)
+    response = MultiModalConversation.call(api_key=qwen_key, model=caption_model, messages=messages)
     
     try:
         response = response['output']['choices'][0]['message']['content'][0]["text"]

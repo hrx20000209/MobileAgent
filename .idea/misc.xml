@@ -3,5 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="mobile_agent_e" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="mobile_agent_e" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="mobile_agent_v2" project-jdk-type="Python SDK" />
 </project>
