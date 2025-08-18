@@ -281,11 +281,21 @@ if not os.path.exists(screenshot):
     os.mkdir(screenshot)
 error_flag = False
 
+step_latency_list = []
+perception_latency_list = []
+llm_latency_list = []
+memory_latency_list = []
+action_latency_list = []
+reflection_latency_list = []
 
 iter = 0
 while True:
+    start_time = time.time()
     iter += 1
     if iter == 1:
+
+        perception_start_time = time.time()
+
         screenshot_file = "./screenshot/screenshot.jpg"
         perception_infos, width, height = get_perception_infos(adb_path, screenshot_file)
         shutil.rmtree(temp_file)
@@ -300,6 +310,12 @@ while True:
                 keyboard = True
                 break
 
+        perception_end_time = time.time()
+        perception_latency = perception_end_time - perception_start_time
+        perception_latency_list.append(perception_latency)
+
+    llm_start_time = time.time()
+
     prompt_action = get_action_prompt(instruction, perception_infos, width, height, keyboard, summary_history, action_history, summary, action, add_info, error_flag, completed_requirements, memory)
     chat_action = init_action_chat()
     chat_action = add_response("user", prompt_action, chat_action, screenshot_file)
@@ -313,6 +329,12 @@ while True:
     print(status)
     print(output_action)
     print('#' * len(status))
+
+    llm_end_time = time.time()
+    llm_latency = llm_end_time - llm_start_time
+    llm_latency_list.append(llm_latency)
+
+    memory_start_time = time.time()
     
     if memory_switch:
         prompt_memory = get_memory_prompt(insight)
@@ -326,6 +348,12 @@ while True:
         output_memory = output_memory.split("### Important content ###")[-1].split("\n\n")[0].strip() + "\n"
         if "None" not in output_memory and output_memory not in memory:
             memory += output_memory
+
+    memory_end_time = time.time()
+    memory_latency = memory_end_time - memory_start_time
+    memory_latency_list.append(memory_latency)
+
+    action_start_time = time.time()
     
     if "Open app" in action:
         app_name = action.split("(")[-1].split(")")[0]
@@ -364,6 +392,10 @@ while True:
         
     elif "Stop" in action:
         break
+
+    action_end_time = time.time()
+    action_latency = action_end_time - action_start_time
+    action_latency_list.append(action_latency)
     
     time.sleep(5)
     
@@ -373,10 +405,16 @@ while True:
     if os.path.exists(last_screenshot_file):
         os.remove(last_screenshot_file)
     os.rename(screenshot_file, last_screenshot_file)
-    
+
+    perception_start_time = time.time()
+
     perception_infos, width, height = get_perception_infos(adb_path, screenshot_file)
     shutil.rmtree(temp_file)
     os.mkdir(temp_file)
+
+    perception_end_time = time.time()
+    perception_latency = perception_end_time - perception_start_time
+    perception_latency_list.append(perception_latency)
     
     keyboard = False
     for perception_info in perception_infos:
@@ -385,6 +423,8 @@ while True:
         if 'ADB Keyboard' in perception_info['text']:
             keyboard = True
             break
+
+    reflection_start_time = time.time()
     
     if reflection_switch:
         prompt_reflect = get_reflect_prompt(instruction, last_perception_infos, perception_infos, width, height, last_keyboard, keyboard, summary, action, add_info)
@@ -439,5 +479,28 @@ while True:
         print(output_planning)
         print('#' * len(status))
         completed_requirements = output_planning.split("### Completed contents ###")[-1].replace("\n", " ").strip()
-         
+
+    reflection_end_time = time.time()
+    reflection_latency = reflection_end_time - reflection_start_time
+    reflection_latency_list.append(reflection_latency)
+
     os.remove(last_screenshot_file)
+
+    end_time = time.time()
+    step_latency = end_time - start_time
+    step_latency_list.append(step_latency)
+    avg_step_latency = sum(step_latency_list) / len(step_latency_list)
+    avg_perception_latency = sum(perception_latency_list) / len(perception_latency_list)
+    avg_llm_latency = sum(llm_latency_list) / len(llm_latency_list)
+    avg_action_latency = sum(action_latency_list) / len(action_latency_list)
+    avg_memory_latency = sum(memory_latency_list) / len(memory_latency_list)
+    avg_reflection_latency = sum(reflection_latency_list) / len(reflection_latency_list)
+    with open('./logs/system/latency.txt', 'a') as f:
+        f.write(f"------------------------- Step {iter} -------------------------\n"
+                f"Current Step Latency: {step_latency:.2f}, Avg Step Latency: {avg_step_latency:.2f}\n"
+                f"Current Perception Latency: {perception_latency:.2f}, "
+                f"Avg Perception Latency: {avg_perception_latency:.2f}\n"
+                f"Current LLM Latency: {llm_latency:.2f}, Avg LLM Latency: {avg_llm_latency}\n"
+                f"Current Action Latency: {action_latency:.2f}, Avg Action Latency: {avg_action_latency}\n"
+                f"Current Memory Latency: {memory_latency:}, Avg Memory Latency: {avg_memory_latency}\n"
+                f"Current Reflection Latency: {reflection_latency}, Avg Reflection Latency: {avg_reflection_latency}")
