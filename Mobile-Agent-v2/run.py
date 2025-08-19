@@ -495,12 +495,14 @@ while True:
     avg_action_latency = sum(action_latency_list) / len(action_latency_list)
     avg_memory_latency = sum(memory_latency_list) / len(memory_latency_list)
     avg_reflection_latency = sum(reflection_latency_list) / len(reflection_latency_list)
+    latency_str = f"------------------------- Step {iter} -------------------------\n"
+    f'Current Step Latency: {step_latency:.2f}, Avg Step Latency: {avg_step_latency:.2f}\n'
+    f"Current Perception Latency: {perception_latency:.2f}, "
+    f"Avg Perception Latency: {avg_perception_latency:.2f}\n"
+    f"Current LLM Latency: {llm_latency:.2f}, Avg LLM Latency: {avg_llm_latency}\n"
+    f"Current Action Latency: {action_latency:.2f}, Avg Action Latency: {avg_action_latency}\n"
+    f"Current Memory Latency: {memory_latency:}, Avg Memory Latency: {avg_memory_latency}\n"
+    f"Current Reflection Latency: {reflection_latency}, Avg Reflection Latency: {avg_reflection_latency}"
+    print(latency_str)
     with open('./logs/system/latency.txt', 'a') as f:
-        f.write(f"------------------------- Step {iter} -------------------------\n"
-                f"Current Step Latency: {step_latency:.2f}, Avg Step Latency: {avg_step_latency:.2f}\n"
-                f"Current Perception Latency: {perception_latency:.2f}, "
-                f"Avg Perception Latency: {avg_perception_latency:.2f}\n"
-                f"Current LLM Latency: {llm_latency:.2f}, Avg LLM Latency: {avg_llm_latency}\n"
-                f"Current Action Latency: {action_latency:.2f}, Avg Action Latency: {avg_action_latency}\n"
-                f"Current Memory Latency: {memory_latency:}, Avg Memory Latency: {avg_memory_latency}\n"
-                f"Current Reflection Latency: {reflection_latency}, Avg Reflection Latency: {avg_reflection_latency}")
+        f.write(latency_str)
