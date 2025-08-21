@@ -1,4 +1,5 @@
 import os
+import random
 import time
 import copy
 import torch
@@ -94,7 +95,6 @@ INIT_TIPS = """0. Do not add any payment information. If you are asked to sign i
 TEMP_DIR = "temp"
 SCREENSHOT_DIR = "screenshot"
 SLEEP_BETWEEN_STEPS = 5
-
 
 ###################################################################################################
 ### Perception related functions ###
@@ -240,8 +240,6 @@ def merge_text_blocks(
     return merged_text_blocks, merged_coordinates
 
 
-###################################################################################################
-
 def load_perception_models(
         device="cuda",
         caption_call_method=CAPTION_CALL_METHOD,
@@ -251,7 +249,9 @@ def load_perception_models(
         ocr_detection_model="iic/cv_resnet18_ocr-detection-db-line-level_damo",
         ocr_recognition_model="iic/cv_convnextTiny_ocr-recognition-document_damo",
 ):
-    ### Load caption model ###
+    """
+        Load caption model
+    """
     if caption_call_method == "local":
         if caption_model == "qwen-vl-chat":
             model_dir = snapshot_download('qwen/Qwen-VL-Chat', revision='v1.1.0')
@@ -277,7 +277,9 @@ def load_perception_models(
         print("You must choose the caption model call function from \"local\" and \"api\"")
         exit(0)
 
-    ### Load ocr and icon detection model ###
+    '''
+        Load OCR and icon detection model
+    '''
     groundingdino_dir = snapshot_download(groundingdino_model, revision=groundingdino_revision)
     groundingdino_model = pipeline('grounding-dino-task', model=groundingdino_dir)
     ocr_detection = pipeline(Tasks.ocr_detection, model=ocr_detection_model)  # dbnet (no tensorflow)
@@ -372,8 +374,6 @@ class Perceptor:
         return perception_infos, width, height
 
 
-###################################################################################################
-
 def finish(
         info_pool: InfoPool,
         persistent_tips_path=None,
@@ -394,10 +394,6 @@ def finish(
         with open(persistent_shortcuts_path, "w") as f:
             json.dump(info_pool.shortcuts, f, indent=4)
     # exit(0)
-
-
-import copy
-import random
 
 
 def get_reasoning_model_api_response(chat, model_type=BACKBONE_TYPE, model=None, temperature=0.0):
@@ -451,8 +447,8 @@ def run_single_task(
 
     if screenrecord:
         # record one mp4 for each iteration
-        screenrecord_dir = f"{log_dir}/screenrecords"
-        os.makedirs(screenrecord_dir, exist_ok=True)
+        screen_record_dir = f"{log_dir}/screenrecords"
+        os.makedirs(screen_record_dir, exist_ok=True)
 
     # local experience save paths
     local_shortcuts_save_path = f"{log_dir}/shortcuts.json"  # single-task setting
@@ -569,10 +565,13 @@ def run_single_task(
     if not os.path.exists(SCREENSHOT_DIR):
         os.mkdir(SCREENSHOT_DIR)
 
-    ### Init Agents ###
+    '''
+        Init Agents 
+    '''
     if perceptor is None:
         # if perceptor is not initialized, create the perceptor
         perceptor = Perceptor(ADB_PATH, perception_args=perception_args)
+
     manager = Manager()
     operator = Operator(adb_path=ADB_PATH)
     notetaker = Notetaker()
@@ -586,7 +585,9 @@ def run_single_task(
     with open(local_shortcuts_save_path, "w") as f:
         json.dump(initial_shortcuts, f, indent=4)
 
-    ### Start the agent ###
+    '''
+        Start the agent 
+    '''
     steps.append({
         "step": 0,
         "operation": "init",
@@ -609,10 +610,31 @@ def run_single_task(
         json.dump(steps, f, indent=4)
 
     iter = 0
+    perception_latency_list = []
+    experience_reflection_list = []
+    planning_latency_list = []
+    action_decision_latency_list = []
+    action_execution_latency_list = []
+    action_reflection_latency_list = []
+    note_taking_latency_list = []
+    step_latency_list = []
+
+    perception_latency = 0
+    experience_reflection_latency = 0
+    planning_latency = 0
+    action_decision_latency = 0
+    action_execution_latency = 0
+    action_reflection_latency = 0
+    note_taking_latency = 0
+    step_latency = 0
+
     while True:
         iter += 1
+        step_start_time = time.time()
 
-        ## max iteration stop ##
+        ''' 
+            max iteration stop
+        '''
         if max_itr is not None and iter >= max_itr:
             print("Max iteration reached. Stopping...")
             task_end_time = time.time()
@@ -628,10 +650,12 @@ def run_single_task(
                 json.dump(steps, f, indent=4)
             return
 
-        ## consecutive failures stop ##
+        '''
+            consecutive failures stop
+        '''
         if len(info_pool.action_outcomes) >= max_consecutive_failures:
-            last_k_aciton_outcomes = info_pool.action_outcomes[-max_consecutive_failures:]
-            err_flags = [1 if outcome in ["B", "C"] else 0 for outcome in last_k_aciton_outcomes]
+            last_k_action_outcomes = info_pool.action_outcomes[-max_consecutive_failures:]
+            err_flags = [1 if outcome in ["B", "C"] else 0 for outcome in last_k_action_outcomes]
             if sum(err_flags) == max_consecutive_failures:
                 print("Consecutive failures reaches the limit. Stopping...")
                 task_end_time = time.time()
@@ -647,7 +671,9 @@ def run_single_task(
                     json.dump(steps, f, indent=4)
                 return
 
-        ## max repetitive actions stop ##
+        '''
+            max repetitive actions stop
+        '''
         if len(info_pool.action_history) >= max_repetitive_actions:
             last_k_actions = info_pool.action_history[-max_repetitive_actions:]
             last_k_actions_set = set()
@@ -687,9 +713,12 @@ def run_single_task(
 
         # start recording for step iter #
         if screenrecord:
-            cur_output_recording_path = f"{screenrecord_dir}/step_{iter}.mp4"
+            cur_output_recording_path = f"{screen_record_dir}/step_{iter}.mp4"
             recording_process = start_recording(ADB_PATH)
 
+        '''
+            First Perceptor ...
+        '''
         if iter == 1:  # first perception
             screenshot_file = "./screenshot/screenshot.jpg"
             print("\n### Perceptor ... ###\n")
@@ -710,7 +739,9 @@ def run_single_task(
             info_pool.width = width
             info_pool.height = height
 
-            ## log ##
+            '''
+                Log...
+            '''
             save_screen_shot_path = f"{log_dir}/screenshots/{iter}.jpg"
             Image.open(screenshot_file).save(save_screen_shot_path)
 
@@ -726,13 +757,20 @@ def run_single_task(
             with open(log_json_path, "w") as f:
                 json.dump(steps, f, indent=4)
 
-        ### get perception infos ###
+            perception_latency = perception_end_time - perception_start_time
+            perception_latency_list.append(perception_latency)
+
+        '''
+            get perception infos
+        '''
         info_pool.perception_infos_pre = copy.deepcopy(perception_infos)
         info_pool.keyboard_pre = keyboard
 
-        ### Manager: High-level Planning ###
+        '''
+            Manager: High-level Planning
+        '''
         print("\n### Manager ... ###\n")
-        ## check if stuck with errors for a long time ##
+        # check if stuck with errors for a long time
         # if so need to think about the high-level plan again
         info_pool.error_flag_plan = False
         if len(info_pool.action_outcomes) >= err_to_manager_thresh:
@@ -744,20 +782,24 @@ def run_single_task(
                     count += 1
             if count == err_to_manager_thresh:
                 info_pool.error_flag_plan = True
-        ## 
         info_pool.prev_subgoal = info_pool.current_subgoal
 
         planning_start_time = time.time()
         prompt_planning = manager.get_prompt(info_pool)
         chat_planning = manager.init_chat()
         chat_planning = add_response("user", prompt_planning, chat_planning, image=screenshot_file)
+        ''' 
+            Manager call API ...
+        '''
         output_planning = get_reasoning_model_api_response(chat_planning, temperature=temperature)
         parsed_result_planning = manager.parse_response(output_planning)
 
         info_pool.plan = parsed_result_planning['plan']
         info_pool.current_subgoal = parsed_result_planning['current_subgoal']
 
-        ## log ##
+        '''
+            Loging ...
+        '''
         planning_end_time = time.time()
         steps.append({
             "step": iter,
@@ -774,12 +816,15 @@ def run_single_task(
         print("Overall Plan:", info_pool.plan)
         print("Current Subgoal:", info_pool.current_subgoal)
 
+        planning_latency = planning_end_time - planning_start_time
+        planning_latency_list.append(planning_latency)
+
         with open(log_json_path, "w") as f:
             json.dump(steps, f, indent=4)
 
-        ###
-
-        ### Experience Reflection: Update Tips & Shortcuts for Self-Evolving ###
+        '''
+            Experience Reflection: Update Tips & Shortcuts for Self-Evolving
+        '''
         if len(info_pool.action_outcomes) > 0:
             # at the end of each task, update the tips and shortcuts
             if "Finished" in info_pool.current_subgoal.strip():
@@ -825,13 +870,20 @@ def run_single_task(
                 })
                 with open(log_json_path, "w") as f:
                     json.dump(steps, f, indent=4)
-                ## save the updated tips and shortcuts ##
+                ''' 
+                    save the updated tips and shortcuts
+                '''
                 with open(local_tips_save_path, "w") as f:
                     f.write(info_pool.tips)
                 with open(local_shortcuts_save_path, "w") as f:
                     json.dump(info_pool.shortcuts, f, indent=4)
 
-        ### Stopping by planner ###
+                experience_reflection_latency = experience_reflection_end_time - experience_reflection_start_time
+                experience_reflection_list.append(experience_reflection_latency)
+
+        ''' 
+            Stopping by planner
+        '''
         if "Finished" in info_pool.current_subgoal.strip():
             info_pool.finish_thought = parsed_result_planning['thought']
             task_end_time = time.time()
@@ -853,7 +905,9 @@ def run_single_task(
                 end_recording(ADB_PATH, output_recording_path=cur_output_recording_path)
             return
 
-        ### Executor: Action Decision ###
+        ''' 
+            Executor: Action Decision
+        '''
         print("\n### Operator ... ###\n")
         action_decision_start_time = time.time()
         prompt_action = operator.get_prompt(info_pool)
@@ -868,17 +922,18 @@ def run_single_task(
         info_pool.last_action_thought = action_thought
         ## execute the action ##
         action_execution_start_time = time.time()
-        action_object, num_atomic_actions_executed, shortcut_error_message = operator.execute(action_object_str,
-                                                                                              info_pool,
-                                                                                              screenshot_file=screenshot_file,
-                                                                                              ocr_detection=perceptor.ocr_detection,
-                                                                                              ocr_recognition=perceptor.ocr_recognition,
-                                                                                              thought=action_thought,
-                                                                                              screenshot_log_dir=os.path.join(
-                                                                                                  log_dir,
-                                                                                                  "screenshots"),
-                                                                                              iter=str(iter)
-                                                                                              )
+        action_object, num_atomic_actions_executed, shortcut_error_message \
+            = operator.execute(action_object_str,
+                              info_pool,
+                              screenshot_file=screenshot_file,
+                              ocr_detection=perceptor.ocr_detection,
+                              ocr_recognition=perceptor.ocr_recognition,
+                              thought=action_thought,
+                              screenshot_log_dir=os.path.join(
+                                  log_dir,
+                                  "screenshots"),
+                              iter=str(iter)
+                              )
         action_execution_end_time = time.time()
         if action_object is None:
             task_end_time = time.time()
@@ -904,7 +959,9 @@ def run_single_task(
         info_pool.last_action = action_object
         info_pool.last_summary = action_description
 
-        ## log ##
+        ''' 
+            Loging ...
+        '''
         steps.append({
             "step": iter,
             "operation": "action",
@@ -921,11 +978,18 @@ def run_single_task(
         print("Action Description:", action_description)
         print("Action:", action_object)
 
+        action_decision_latency = action_decision_end_time - action_decision_start_time
+        action_execution_latency = action_execution_end_time - action_execution_start_time
+        action_decision_latency_list.append(action_decision_latency)
+        action_execution_latency_list.append(action_execution_latency)
+
         with open(log_json_path, "w") as f:
             json.dump(steps, f, indent=4)
 
         print("\n### Perceptor ... ###\n")
-        ## perception on the next step ##
+        ''' 
+            perception on the next step
+        '''
         perception_start_time = time.time()
         # last_perception_infos = copy.deepcopy(perception_infos)
         last_screenshot_file = "./screenshot/last_screenshot.jpg"
@@ -950,7 +1014,9 @@ def run_single_task(
         info_pool.keyboard_post = keyboard
         assert width == info_pool.width and height == info_pool.height  # assert the screen size not changed
 
-        ## log ##
+        '''
+            Loging ...
+        '''
         Image.open(screenshot_file).save(f"{log_dir}/screenshots/{iter + 1}.jpg")
         perception_end_time = time.time()
         steps.append({
@@ -961,13 +1027,17 @@ def run_single_task(
             "duration": perception_end_time - perception_start_time
         })
         print("Perception Infos:", perception_infos)
+
+        perception_latency = perception_end_time - perception_start_time
+        perception_latency_list.append(perception_latency)
+
         with open(log_json_path, "w") as f:
             json.dump(steps, f, indent=4)
 
-        ##
-
         print("\n### Action Reflector ... ###\n")
-        ### Action Reflection: Check whether the action works as expected ###
+        ''' 
+            Action Reflection: Check whether the action works as expected
+        '''
         action_reflection_start_time = time.time()
         prompt_action_reflect = action_reflector.get_prompt(info_pool)
         chat_action_reflect = action_reflector.init_chat()
@@ -1017,7 +1087,9 @@ def run_single_task(
         info_pool.error_descriptions.append(error_description)
         info_pool.progress_status = progress_status
 
-        ## log ##
+        '''
+            Loging ...
+        '''
         steps.append({
             "step": iter,
             "operation": "action_reflection",
@@ -1032,12 +1104,15 @@ def run_single_task(
         print("Progress Status:", progress_status)
         print("Error Description:", error_description)
 
+        action_reflection_latency = action_reflection_end_time - action_reflection_start_time
+        action_reflection_latency_list.append(action_reflection_latency)
+
         with open(log_json_path, "w") as f:
             json.dump(steps, f, indent=4)
 
-        ##
-
-        ### NoteTaker: Record Important Content ###
+        ''' 
+            NoteTaker: Record Important Content
+        '''
         if action_outcome == "A":
             print("\n### NoteKeeper ... ###\n")
             # if previous action is successful, record the important content
@@ -1063,6 +1138,8 @@ def run_single_task(
             print("Important Notes:", important_notes)
             with open(log_json_path, "w") as f:
                 json.dump(steps, f, indent=4)
+            note_taking_latency = notetaking_end_time - notetaking_start_time
+            note_taking_latency_list.append(note_taking_latency)
 
         elif action_outcome in ["B", "C"]:
             os.remove(last_screenshot_file)
@@ -1071,4 +1148,35 @@ def run_single_task(
             end_recording(ADB_PATH, output_recording_path=cur_output_recording_path)
         print("\n=========================================================")
         print(f"sleeping for {SLEEP_BETWEEN_STEPS} before next iteration ...\n\n")
+
+        step_end_time = time.time()
+        step_latency_list.append(step_end_time - step_start_time)
+
+        avg_perception_latency = sum(perception_latency_list) / len(perception_latency_list) if len(perception_latency_list) > 0 else 0
+        avg_experience_reflection_latency = sum(experience_reflection_list) / len(experience_reflection_list) > 0 if experience_reflection_list else 0
+        avg_planning_latency = sum(planning_latency_list) / len(planning_latency_list) if len(planning_latency_list) > 0 else 0
+        avg_action_decision_latency = sum(action_decision_latency_list) / len(action_decision_latency_list) if len(action_decision_latency_list) > 0 else 0
+        avg_action_execution_latency = sum(action_execution_latency_list) / len(action_decision_latency_list) if len(action_decision_latency_list) > 0 else 0
+        avg_action_reflection_latency = sum(action_reflection_latency_list) / len(action_reflection_latency_list) if len(action_reflection_latency_list) > 0 else 0
+        avg_note_taking_latency = sum(note_taking_latency_list) / len(note_taking_latency_list) if len(note_taking_latency_list) > 0 else 0
+        avg_step_latency = sum(step_latency_list) / len(step_latency_list) if len(step_latency_list) > 0 else 0
+
+        log_str = f"Current Perception Latency: {perception_latency}, "\
+                  f"Avg Perception Latency: {avg_perception_latency}\n"\
+                  f"Current Experience Reflection Latency: {experience_reflection_latency}, "\
+                  f"Avg Experience Reflection Latency: {avg_experience_reflection_latency}\n"\
+                  f"Current Planning Latency: {planning_latency}, "\
+                  f"Avg Planning Latency: {avg_planning_latency}\n"\
+                  f"Current Action Decision Latency: {action_decision_latency}, "\
+                  f"Avg Action Decision Latency: {avg_action_decision_latency}\n"\
+                  f"Current Action Execution Latency: {action_execution_latency}, "\
+                  f"Avg Action Execution Latency: {avg_action_execution_latency}\n"\
+                  f"Current Action Reflection Latency: {action_reflection_latency}, "\
+                  f"Avg Action Reflection Latency: {avg_action_reflection_latency}\n"\
+                  f"Current Note Taking Latency: {note_taking_latency}, "\
+                  f"Avg Note Taking Latency: {avg_note_taking_latency}\n"\
+                  f"Current Step Latency: {step_latency_list[-1]}, " f"Avg Step Latency: {avg_step_latency}\n\n"
+        with open('./logs/system/latency.txt', 'a') as f:
+            f.write(log_str)
+
         sleep(SLEEP_BETWEEN_STEPS)

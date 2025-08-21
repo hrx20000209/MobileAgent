@@ -11,6 +11,7 @@ import json
 import time
 import os
 
+
 ### Helper Functions ###
 
 def add_response(role, prompt, chat_history, image=None):
@@ -19,11 +20,11 @@ def add_response(role, prompt, chat_history, image=None):
         base64_image = encode_image(image)
         content = [
             {
-                "type": "text", 
+                "type": "text",
                 "text": prompt
             },
             {
-                "type": "image_url", 
+                "type": "image_url",
                 "image_url": {
                     "url": f"data:image/jpeg;base64,{base64_image}"
                 }
@@ -32,8 +33,8 @@ def add_response(role, prompt, chat_history, image=None):
     else:
         content = [
             {
-            "type": "text", 
-            "text": prompt
+                "type": "text",
+                "text": prompt
             },
         ]
     new_chat_history.append([role, content])
@@ -47,17 +48,17 @@ def add_response_two_image(role, prompt, chat_history, image):
     base64_image2 = encode_image(image[1])
     content = [
         {
-            "type": "text", 
+            "type": "text",
             "text": prompt
         },
         {
-            "type": "image_url", 
+            "type": "image_url",
             "image_url": {
                 "url": f"data:image/jpeg;base64,{base64_image1}"
             }
         },
         {
-            "type": "image_url", 
+            "type": "image_url",
             "image_url": {
                 "url": f"data:image/jpeg;base64,{base64_image2}"
             }
@@ -69,11 +70,11 @@ def add_response_two_image(role, prompt, chat_history, image):
 
 
 def print_status(chat_history):
-    print("*"*100)
+    print("*" * 100)
     for chat in chat_history:
         print("role:", chat[0])
-        print(chat[1][0]["text"] + "<image>"*(len(chat[1])-1) + "\n")
-    print("*"*100)
+        print(chat[1][0]["text"] + "<image>" * (len(chat[1]) - 1) + "\n")
+    print("*" * 100)
 
 
 def extract_json_object(text, json_type="dict"):
@@ -123,6 +124,7 @@ def extract_json_object(text, json_type="dict"):
     # If all attempts fail, return None
     return None
 
+
 ########################
 
 
@@ -138,10 +140,10 @@ class InfoPool:
     # Perception
     width: int = 1080
     height: int = 2340
-    perception_infos_pre: list = field(default_factory=list) # List of clickable elements pre action
-    keyboard_pre: bool = False # keyboard status pre action
-    perception_infos_post: list = field(default_factory=list) # List of clickable elements post action
-    keyboard_post: bool = False # keyboard status post action
+    perception_infos_pre: list = field(default_factory=list)  # List of clickable elements pre action
+    keyboard_pre: bool = False  # keyboard status pre action
+    perception_infos_post: list = field(default_factory=list)  # List of clickable elements post action
+    keyboard_post: bool = False  # keyboard status post action
 
     # Working memory
     summary_history: list = field(default_factory=list)  # List of action descriptions
@@ -153,9 +155,9 @@ class InfoPool:
     last_action: str = ""  # Last action
     last_action_thought: str = ""  # Last action thought
     important_notes: str = ""
-    
-    error_flag_plan: bool = False # if an error is not solved for multiple attempts with the executor
-    error_description_plan: bool = False # explanation of the error for modifying the plan
+
+    error_flag_plan: bool = False  # if an error is not solved for multiple attempts with the executor
+    error_description_plan: bool = False  # explanation of the error for modifying the plan
 
     # Planning
     plan: str = ""
@@ -174,9 +176,11 @@ class BaseAgent(ABC):
     @abstractmethod
     def init_chat(self) -> list:
         pass
+
     @abstractmethod
     def get_prompt(self, info_pool: InfoPool) -> str:
         pass
+
     @abstractmethod
     def parse_response(self, response: str) -> dict:
         pass
@@ -186,8 +190,8 @@ class Manager(BaseAgent):
 
     def init_chat(self):
         operation_history = []
-        sysetm_prompt = "You are a helpful AI assistant for operating mobile phones. Your goal is to track progress and devise high-level plans to achieve the user's requests. Think as if you are a human user operating the phone."
-        operation_history.append(["system", [{"type": "text", "text": sysetm_prompt}]])
+        system_prompt = "You are a helpful AI assistant for operating mobile phones. Your goal is to track progress and devise high-level plans to achieve the user's requests. Think as if you are a human user operating the phone."
+        operation_history.append(["system", [{"type": "text", "text": system_prompt}]])
         return operation_history
 
     def get_prompt(self, info_pool: InfoPool) -> str:
@@ -198,7 +202,7 @@ class Manager(BaseAgent):
             # first time planning
             prompt += "---\n"
             prompt += "Think step by step and make an high-level plan to achieve the user's instruction. If the request is complex, break it down into subgoals. If the request involves exploration, include concrete subgoals to quantify the investigation steps. The screenshot displays the starting state of the phone.\n\n"
-            
+
             if info_pool.shortcuts != {}:
                 prompt += "### Available Shortcuts from Past Experience ###\n"
                 prompt += "We additionally provide some shortcut functionalities based on past experience. These shortcuts are predefined sequences of operations that might make the plan more efficient. Each shortcut includes a precondition specifying when it is suitable for use. If your plan implies the use of certain shortcuts, ensure that the precondition is fulfilled before using them. Note that you don't necessarily need to include the names of these shortcuts in your high-level plan; they are provided as a reference.\n"
@@ -250,7 +254,7 @@ class Manager(BaseAgent):
                 for shortcut, value in info_pool.shortcuts.items():
                     prompt += f"- {shortcut}: {value['description']} | Precondition: {value['precondition']}\n"
                 prompt += "\n"
-            
+
             prompt += "---\n"
             prompt += "Provide your output in the following format, which contains three parts:\n\n"
             prompt += "### Thought ###\n"
@@ -262,8 +266,10 @@ class Manager(BaseAgent):
         return prompt
 
     def parse_response(self, response: str) -> dict:
-        thought = response.split("### Thought ###")[-1].split("### Plan ###")[0].replace("\n", " ").replace("  ", " ").strip()
-        plan = response.split("### Plan ###")[-1].split("### Current Subgoal ###")[0].replace("\n", " ").replace("  ", " ").strip()
+        thought = response.split("### Thought ###")[-1].split("### Plan ###")[0].replace("\n", " ").replace("  ",
+                                                                                                            " ").strip()
+        plan = response.split("### Plan ###")[-1].split("### Current Subgoal ###")[0].replace("\n", " ").replace("  ",
+                                                                                                                 " ").strip()
         current_subgoal = response.split("### Current Subgoal ###")[-1].replace("\n", " ").replace("  ", " ").strip()
         return {"thought": thought, "plan": plan, "current_subgoal": current_subgoal}
 
@@ -272,7 +278,8 @@ class Manager(BaseAgent):
 ATOMIC_ACTION_SIGNITURES = {
     "Open_App": {
         "arguments": ["app_name"],
-        "description": lambda info: "If the current screen is Home or App screen, you can use this action to open the app named \"app_name\" on the visible on the current screen."
+        "description": lambda
+            info: "If the current screen is Home or App screen, you can use this action to open the app named \"app_name\" on the visible on the current screen."
     },
     "Tap": {
         "arguments": ["x", "y"],
@@ -280,7 +287,8 @@ ATOMIC_ACTION_SIGNITURES = {
     },
     "Swipe": {
         "arguments": ["x1", "y1", "x2", "y2"],
-        "description": lambda info: f"Swipe from position (x1, y1) to position (x2, y2). To swipe up or down to review more content, you can adjust the y-coordinate offset based on the desired scroll distance. For example, setting x1 = x2 = {int(0.5 * info.width)}, y1 = {int(0.5 * info.height)}, and y2 = {int(0.1 * info.height)} will swipe upwards to review additional content below. To swipe left or right in the App switcher screen to choose between open apps, set the x-coordinate offset to at least {int(0.5 * info.width)}."
+        "description": lambda
+            info: f"Swipe from position (x1, y1) to position (x2, y2). To swipe up or down to review more content, you can adjust the y-coordinate offset based on the desired scroll distance. For example, setting x1 = x2 = {int(0.5 * info.width)}, y1 = {int(0.5 * info.height)}, and y2 = {int(0.1 * info.height)} will swipe upwards to review additional content below. To swipe left or right in the App switcher screen to choose between open apps, set the x-coordinate offset to at least {int(0.5 * info.width)}."
     },
     "Type": {
         "arguments": ["text"],
@@ -314,9 +322,9 @@ INIT_SHORTCUTS = {
         "arguments": ["x", "y", "text"],
         "description": "Tap an input box at position (x, y), Type the \"text\", and then perform the Enter operation. Very useful for searching and sending messages!",
         "precondition": "There is a text input box on the screen with no previously entered content.",
-        "atomic_action_sequence":[
-            {"name": "Tap", "arguments_map": {"x":"x", "y":"y"}},
-            {"name": "Type", "arguments_map": {"text":"text"}},
+        "atomic_action_sequence": [
+            {"name": "Tap", "arguments_map": {"x": "x", "y": "y"}},
+            {"name": "Type", "arguments_map": {"text": "text"}},
             {"name": "Enter", "arguments_map": {}}
         ]
     }
@@ -329,8 +337,8 @@ class Operator(BaseAgent):
 
     def init_chat(self):
         operation_history = []
-        sysetm_prompt = "You are a helpful AI assistant for operating mobile phones. Your goal is to choose the correct actions to complete the user's instruction. Think as if you are a human user operating the phone."
-        operation_history.append(["system", [{"type": "text", "text": sysetm_prompt}]])
+        system_prompt = "You are a helpful AI assistant for operating mobile phones. Your goal is to choose the correct actions to complete the user's instruction. Think as if you are a human user operating the phone."
+        operation_history.append(["system", [{"type": "text", "text": system_prompt}]])
         return operation_history
 
     def get_prompt(self, info_pool: InfoPool) -> str:
@@ -362,7 +370,8 @@ class Operator(BaseAgent):
         prompt += "The extracted information is as follows:\n"
 
         for clickable_info in info_pool.perception_infos_pre:
-            if clickable_info['text'] != "" and clickable_info['text'] != "icon: None" and clickable_info['coordinates'] != (0, 0):
+            if clickable_info['text'] != "" and clickable_info['text'] != "icon: None" and clickable_info[
+                'coordinates'] != (0, 0):
                 prompt += f"{clickable_info['coordinates']}; {clickable_info['text']}\n"
         prompt += "\n"
         prompt += (
@@ -393,7 +402,7 @@ class Operator(BaseAgent):
 
         prompt += "---\n"
         prompt += "Carefully examine all the information provided above and decide on the next action to perform. If you notice an unsolved error in the previous action, think as a human user and attempt to rectify them. You must choose your action from one of the atomic actions or the shortcuts. The shortcuts are predefined sequences of actions that can be used to speed up the process. Each shortcut has a precondition specifying when it is suitable to use. If you plan to use a shortcut, ensure the current phone state satisfies its precondition first.\n\n"
-        
+
         prompt += "#### Atomic Actions ####\n"
         prompt += "The atomic action functions are listed in the format of `name(arguments): description` as follows:\n"
 
@@ -405,7 +414,7 @@ class Operator(BaseAgent):
                 if "Type" not in action:
                     prompt += f"- {action}({', '.join(value['arguments'])}): {value['description'](info_pool)}\n"
             prompt += "NOTE: Unable to type. The keyboard has not been activated. To type, please activate the keyboard by tapping on an input box or using a shortcut, which includes tapping on an input box first.”\n"
-        
+
         prompt += "\n"
         prompt += "#### Shortcuts ####\n"
         if info_pool.shortcuts != {}:
@@ -434,7 +443,7 @@ class Operator(BaseAgent):
                 action_log_strs.append(action_log_str)
             if latest_outcomes[-1] == "C" and "Tap" in action_log_strs[-1] and "Tap" in action_log_strs[-2]:
                 prompt += "\nHINT: If multiple Tap actions failed to make changes to the screen, consider using a \"Swipe\" action to view more content or use another way to achieve the current subgoal."
-            
+
             prompt += "\n"
         else:
             prompt += "No actions have been taken yet.\n\n"
@@ -448,14 +457,14 @@ class Operator(BaseAgent):
         prompt += "Choose only one action or shortcut from the options provided. IMPORTANT: Do NOT return invalid actions like null or stop. Do NOT repeat previously failed actions.\n"
         prompt += "Use shortcuts whenever possible to expedite the process, but make sure that the precondition is met.\n"
         prompt += "You must provide your decision using a valid JSON format specifying the name and arguments of the action. For example, if you choose to tap at position (100, 200), you should write {\"name\":\"Tap\", \"arguments\":{\"x\":100, \"y\":100}}. If an action does not require arguments, such as Home, fill in null to the \"arguments\" field. Ensure that the argument keys match the action function's signature exactly.\n\n"
-        
+
         prompt += "### Description ###\n"
         prompt += "A brief description of the chosen action and the expected outcome."
         return prompt
 
     def execute_atomic_action(self, action: str, arguments: dict, **kwargs) -> None:
         adb_path = self.adb
-        
+
         if "Open_App".lower() == action.lower():
             screenshot_file = kwargs["screenshot_file"]
             ocr_detection = kwargs["ocr_detection"]
@@ -464,24 +473,26 @@ class Operator(BaseAgent):
             text, coordinate = ocr(screenshot_file, ocr_detection, ocr_recognition)
             for ti in range(len(text)):
                 if app_name == text[ti]:
-                    name_coordinate = [int((coordinate[ti][0] + coordinate[ti][2])/2), int((coordinate[ti][1] + coordinate[ti][3])/2)]
-                    tap(adb_path, name_coordinate[0], name_coordinate[1]- int(coordinate[ti][3] - coordinate[ti][1]))# 
+                    name_coordinate = [int((coordinate[ti][0] + coordinate[ti][2]) / 2),
+                                       int((coordinate[ti][1] + coordinate[ti][3]) / 2)]
+                    tap(adb_path, name_coordinate[0],
+                        name_coordinate[1] - int(coordinate[ti][3] - coordinate[ti][1]))  # 
                     break
             if app_name in ['Fandango', 'Walmart', 'Best Buy']:
                 # additional wait time for app loading
                 time.sleep(10)
             time.sleep(10)
-        
+
         elif "Tap".lower() == action.lower():
             x, y = int(arguments["x"]), int(arguments["y"])
             tap(adb_path, x, y)
             time.sleep(5)
-        
+
         elif "Swipe".lower() == action.lower():
             x1, y1, x2, y2 = int(arguments["x1"]), int(arguments["y1"]), int(arguments["x2"]), int(arguments["y2"])
             swipe(adb_path, x1, y1, x2, y2)
             time.sleep(5)
-            
+
         elif "Type".lower() == action.lower():
             text = arguments["text"]
             type(adb_path, text)
@@ -494,18 +505,18 @@ class Operator(BaseAgent):
         elif "Back".lower() == action.lower():
             back(adb_path)
             time.sleep(3)
-        
+
         elif "Home".lower() == action.lower():
             home(adb_path)
             time.sleep(3)
-        
+
         elif "Switch_App".lower() == action.lower():
             switch_app(adb_path)
             time.sleep(3)
-        
+
         elif "Wait".lower() == action.lower():
             time.sleep(10)
-        
+
     def execute(self, action_str: str, info_pool: InfoPool, screenshot_log_dir=None, iter="", **kwargs) -> None:
         action_object = extract_json_object(action_str)
         if action_object is None:
@@ -522,7 +533,7 @@ class Operator(BaseAgent):
                 time.sleep(1)
                 screenshot_file = os.path.join(screenshot_log_dir, f"{iter}__{action.replace(' ', '')}.png")
                 save_screenshot_to_file(self.adb, screenshot_file)
-            return action_object, 1, None # number of atomic actions executed
+            return action_object, 1, None  # number of atomic actions executed
         # execute shortcut
         elif action in info_pool.shortcuts:
             print("Executing shortcut: ", action)
@@ -535,18 +546,19 @@ class Operator(BaseAgent):
                     else:
                         atomic_action_args = {}
                         for atomic_arg_key, value in atomic_action["arguments_map"].items():
-                            if value in arguments: # if the mapped key is in the shortcut arguments
+                            if value in arguments:  # if the mapped key is in the shortcut arguments
                                 atomic_action_args[atomic_arg_key] = arguments[value]
-                            else: # if not: the values are directly passed
+                            else:  # if not: the values are directly passed
                                 atomic_action_args[atomic_arg_key] = value
                     print(f"\t Executing sub-step {i}:", atomic_action_name, atomic_action_args, "...")
                     self.execute_atomic_action(atomic_action_name, atomic_action_args, info_pool=info_pool, **kwargs)
                     # log screenshot during shortcut execution
                     if screenshot_log_dir is not None:
                         time.sleep(1)
-                        screenshot_file = os.path.join(screenshot_log_dir, f"{iter}__{action.replace(' ', '')}__{i}-{atomic_action_name.replace(' ', '')}.png")
+                        screenshot_file = os.path.join(screenshot_log_dir,
+                                                       f"{iter}__{action.replace(' ', '')}__{i}-{atomic_action_name.replace(' ', '')}.png")
                         save_screenshot_to_file(self.adb, screenshot_file)
-                        
+
                 except Exception as e:
                     e += f"\nError in executing step {i}: {atomic_action_name} {atomic_action_args}"
                     print("Error in executing shortcut: ", action, e)
@@ -561,8 +573,10 @@ class Operator(BaseAgent):
             return None, 0, None
 
     def parse_response(self, response: str) -> dict:
-        thought = response.split("### Thought ###")[-1].split("### Action ###")[0].replace("\n", " ").replace("  ", " ").strip()
-        action = response.split("### Action ###")[-1].split("### Description ###")[0].replace("\n", " ").replace("  ", " ").strip()
+        thought = response.split("### Thought ###")[-1].split("### Action ###")[0].replace("\n", " ").replace("  ",
+                                                                                                              " ").strip()
+        action = response.split("### Action ###")[-1].split("### Description ###")[0].replace("\n", " ").replace("  ",
+                                                                                                                 " ").strip()
         description = response.split("### Description ###")[-1].replace("\n", " ").replace("  ", " ").strip()
         return {"thought": thought, "action": action, "description": description}
 
@@ -570,8 +584,8 @@ class Operator(BaseAgent):
 class ActionReflector(BaseAgent):
     def init_chat(self) -> list:
         operation_history = []
-        sysetm_prompt = "You are a helpful AI assistant for operating mobile phones. Your goal is to verify whether the last action produced the expected behavior and to keep track of the overall progress."
-        operation_history.append(["system", [{"type": "text", "text": sysetm_prompt}]])
+        system_prompt = "You are a helpful AI assistant for operating mobile phones. Your goal is to verify whether the last action produced the expected behavior and to keep track of the overall progress."
+        operation_history.append(["system", [{"type": "text", "text": system_prompt}]])
         return operation_history
 
     def get_prompt(self, info_pool: InfoPool) -> str:
@@ -588,7 +602,7 @@ class ActionReflector(BaseAgent):
         prompt += f"{info_pool.current_subgoal}\n\n"
 
         prompt += "---\n"
-        prompt += f"The attached two images are two phone screenshots before and after your last action. " 
+        prompt += f"The attached two images are two phone screenshots before and after your last action. "
         prompt += f"The width and height are {info_pool.width} and {info_pool.height} pixels, respectively.\n"
         prompt += (
             "To help you better perceive the content in these screenshots, we have extracted positional information for the text elements and icons. "
@@ -603,7 +617,8 @@ class ActionReflector(BaseAgent):
 
         prompt += "### Screen Information Before the Action ###\n"
         for clickable_info in info_pool.perception_infos_pre:
-            if clickable_info['text'] != "" and clickable_info['text'] != "icon: None" and clickable_info['coordinates'] != (0, 0):
+            if clickable_info['text'] != "" and clickable_info['text'] != "icon: None" and clickable_info[
+                'coordinates'] != (0, 0):
                 prompt += f"{clickable_info['coordinates']}; {clickable_info['text']}\n"
         prompt += "\n"
         prompt += "Keyboard status before the action: "
@@ -613,10 +628,10 @@ class ActionReflector(BaseAgent):
             prompt += "The keyboard has not been activated and you can\'t type."
         prompt += "\n\n"
 
-
         prompt += "### Screen Information After the Action ###\n"
         for clickable_info in info_pool.perception_infos_post:
-            if clickable_info['text'] != "" and clickable_info['text'] != "icon: None" and clickable_info['coordinates'] != (0, 0):
+            if clickable_info['text'] != "" and clickable_info['text'] != "icon: None" and clickable_info[
+                'coordinates'] != (0, 0):
                 prompt += f"{clickable_info['coordinates']}; {clickable_info['text']}\n"
         prompt += "\n"
         prompt += "Keyboard status after the action: "
@@ -651,8 +666,11 @@ class ActionReflector(BaseAgent):
         return prompt
 
     def parse_response(self, response: str) -> dict:
-        outcome = response.split("### Outcome ###")[-1].split("### Error Description ###")[0].replace("\n", " ").replace("  ", " ").strip()
-        error_description = response.split("### Error Description ###")[-1].split("### Progress Status ###")[0].replace("\n", " ").replace("  ", " ").strip()
+        outcome = response.split("### Outcome ###")[-1].split("### Error Description ###")[0].replace("\n",
+                                                                                                      " ").replace("  ",
+                                                                                                                   " ").strip()
+        error_description = response.split("### Error Description ###")[-1].split("### Progress Status ###")[0].replace(
+            "\n", " ").replace("  ", " ").strip()
         progress_status = response.split("### Progress Status ###")[-1].replace("\n", " ").replace("  ", " ").strip()
         return {"outcome": outcome, "error_description": error_description, "progress_status": progress_status}
 
@@ -660,8 +678,8 @@ class ActionReflector(BaseAgent):
 class Notetaker(BaseAgent):
     def init_chat(self) -> list:
         operation_history = []
-        sysetm_prompt = "You are a helpful AI assistant for operating mobile phones. Your goal is to take notes of important content relevant to the user's request."
-        operation_history.append(["system", [{"type": "text", "text": sysetm_prompt}]])
+        system_prompt = "You are a helpful AI assistant for operating mobile phones. Your goal is to take notes of important content relevant to the user's request."
+        operation_history.append(["system", [{"type": "text", "text": system_prompt}]])
         return operation_history
 
     def get_prompt(self, info_pool: InfoPool) -> str:
@@ -696,7 +714,8 @@ class Notetaker(BaseAgent):
         prompt += "The extracted information is as follows:\n"
 
         for clickable_info in info_pool.perception_infos_post:
-            if clickable_info['text'] != "" and clickable_info['text'] != "icon: None" and clickable_info['coordinates'] != (0, 0):
+            if clickable_info['text'] != "" and clickable_info['text'] != "icon: None" and clickable_info[
+                'coordinates'] != (0, 0):
                 prompt += f"{clickable_info['coordinates']}; {clickable_info['text']}\n"
         prompt += "\n"
         prompt += (
@@ -737,8 +756,8 @@ SHORTCUT_EXMPALE = """
 class ExperienceReflectorShortCut(BaseAgent):
     def init_chat(self) -> list:
         operation_history = []
-        sysetm_prompt = "You are a helpful AI assistant specializing in mobile phone operations. Your goal is to reflect on past experiences and provide insights to improve future interactions."
-        operation_history.append(["system", [{"type": "text", "text": sysetm_prompt}]])
+        system_prompt = "You are a helpful AI assistant specializing in mobile phone operations. Your goal is to reflect on past experiences and provide insights to improve future interactions."
+        operation_history.append(["system", [{"type": "text", "text": system_prompt}]])
         return operation_history
 
     def get_prompt(self, info_pool: InfoPool) -> str:
@@ -773,7 +792,8 @@ class ExperienceReflectorShortCut(BaseAgent):
             action_outcomes = info_pool.action_outcomes
             error_descriptions = info_pool.error_descriptions
             progress_status_history = info_pool.progress_status_history
-            for act, summ, outcome, err_des, progress in zip(latest_actions, latest_summary, action_outcomes, error_descriptions, progress_status_history):
+            for act, summ, outcome, err_des, progress in zip(latest_actions, latest_summary, action_outcomes,
+                                                             error_descriptions, progress_status_history):
                 if outcome == "A":
                     prompt += f"- Action: {act} | Description: {summ} | Outcome: Successful | Progress: {progress}\n"
                 else:
@@ -825,8 +845,8 @@ class ExperienceReflectorShortCut(BaseAgent):
 class ExperienceReflectorTips(BaseAgent):
     def init_chat(self) -> list:
         operation_history = []
-        sysetm_prompt = "You are a helpful AI assistant specializing in mobile phone operations. Your goal is to reflect on past experiences and provide insights to improve future interactions."
-        operation_history.append(["system", [{"type": "text", "text": sysetm_prompt}]])
+        system_prompt = "You are a helpful AI assistant specializing in mobile phone operations. Your goal is to reflect on past experiences and provide insights to improve future interactions."
+        operation_history.append(["system", [{"type": "text", "text": system_prompt}]])
         return operation_history
 
     def get_prompt(self, info_pool: InfoPool) -> str:
@@ -838,7 +858,7 @@ class ExperienceReflectorTips(BaseAgent):
 
         prompt += "### Progress Status ###\n"
         prompt += f"{info_pool.progress_status}\n\n"
-    
+
         prompt += "### Existing Tips from Past Experience ###\n"
         if info_pool.tips != "":
             prompt += f"{info_pool.tips}\n\n"
@@ -852,7 +872,8 @@ class ExperienceReflectorTips(BaseAgent):
             action_outcomes = info_pool.action_outcomes
             error_descriptions = info_pool.error_descriptions
             progress_status_history = info_pool.progress_status_history
-            for act, summ, outcome, err_des, progress in zip(latest_actions, latest_summary, action_outcomes, error_descriptions, progress_status_history):
+            for act, summ, outcome, err_des, progress in zip(latest_actions, latest_summary, action_outcomes,
+                                                             error_descriptions, progress_status_history):
                 if outcome == "A":
                     prompt += f"- Action: {act} | Description: {summ} | Outcome: Successful | Progress: {progress}\n"
                 else:
@@ -860,7 +881,7 @@ class ExperienceReflectorTips(BaseAgent):
             prompt += "\n"
         else:
             prompt += "No actions have been taken yet.\n\n"
-            
+
         if len(info_pool.future_tasks) > 0:
             prompt += "---\n"
             # if the setting provides future tasks explicitly
@@ -887,16 +908,16 @@ class ExperienceReflectorTips(BaseAgent):
 class ExperienceRetrieverShortCut(BaseAgent):
     def init_chat(self) -> list:
         operation_history = []
-        sysetm_prompt = "You are a helpful AI assistant specializing in mobile phone operations. Your goal is to select relevant shortcuts from previous experience to the current task."
-        operation_history.append(["system", [{"type": "text", "text": sysetm_prompt}]])
+        system_prompt = "You are a helpful AI assistant specializing in mobile phone operations. Your goal is to select relevant shortcuts from previous experience to the current task."
+        operation_history.append(["system", [{"type": "text", "text": system_prompt}]])
         return operation_history
 
     def get_prompt(self, instruction, shortcuts) -> str:
-        
+
         prompt = "### Existing Shortcuts from Past Experience ###\n"
         for shortcut, value in shortcuts.items():
             prompt += f"- Name: {shortcut} | Description: {value['description']}\n"
-        
+
         prompt += "\n"
         prompt += "### Current Task ###\n"
         prompt += f"{instruction}\n\n"
@@ -908,29 +929,30 @@ class ExperienceRetrieverShortCut(BaseAgent):
         prompt += "### Selected Shortcuts ###\n"
         prompt += "Provide your answer as a list of selected shortcut names: [\"shortcut1\", \"shortcut2\", ...]. If there are no relevant shortcuts, put \"None\" here.\n"
         return prompt
-    
+
     def parse_response(self, response: str) -> dict:
-        selected_shortcuts_str = response.split("### Selected Shortcuts ###")[-1].replace("\n", " ").replace("  ", " ").strip()
+        selected_shortcuts_str = response.split("### Selected Shortcuts ###")[-1].replace("\n", " ").replace("  ",
+                                                                                                             " ").strip()
         try:
             selected_shortcut_names = extract_json_object(selected_shortcuts_str, json_type="list")
             selected_shortcut_names = [s.strip() for s in selected_shortcut_names]
         except:
             selected_shortcut_names = []
-            
+
         return {"selected_shortcut_names": selected_shortcut_names}
 
 
 class ExperienceRetrieverTips(BaseAgent):
     def init_chat(self) -> list:
         operation_history = []
-        sysetm_prompt = "You are a helpful AI assistant specializing in mobile phone operations. Your goal is to select relevant tips from previous experience to the current task."
-        operation_history.append(["system", [{"type": "text", "text": sysetm_prompt}]])
+        system_prompt = "You are a helpful AI assistant specializing in mobile phone operations. Your goal is to select relevant tips from previous experience to the current task."
+        operation_history.append(["system", [{"type": "text", "text": system_prompt}]])
         return operation_history
 
     def get_prompt(self, instruction, tips) -> str:
         prompt = "### Existing Tips from Past Experience ###\n"
         prompt += f"{tips}\n\n"
-        
+
         prompt += "\n"
         prompt += "### Current Task ###\n"
         prompt += f"{instruction}\n\n"
@@ -943,7 +965,7 @@ class ExperienceRetrieverTips(BaseAgent):
         prompt += "Tips that are generally useful and relevant to the current task. Feel free to reorganize the bullets. If there are no relevant tips, put \"None\" here.\n"
 
         return prompt
-    
+
     def parse_response(self, response: str) -> dict:
-        selected_tips = response.split("### Selected Tips ###")[-1].replace("\n", " ").replace("  ", " ").strip()        
+        selected_tips = response.split("### Selected Tips ###")[-1].replace("\n", " ").replace("  ", " ").strip()
         return {"selected_tips": selected_tips}
