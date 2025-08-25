@@ -7,8 +7,6 @@ messages = [
     {
         "role": "user",
         "content": [
-            {"type": "image",
-             "url": "https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.consumerreports.org%2Felectronics-computers%2Fcell-phones%2Fapple-iphone-11%2Fm399694%2F&psig=AOvVaw0-JM5SJKKSi7wM2nOmEgLq&ust=1755791212859000&source=images&cd=vfe&opi=89978449&ved=0CBUQjRxqFwoTCJjBsY_emY8DFQAAAAAdAAAAABAE"},
             {"type": "text", "text": "What do you see in the screen?"}
         ]
     },
